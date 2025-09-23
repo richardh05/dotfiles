@@ -2,3 +2,4 @@
 .config/Thunar/accels.scm
 .vscode
 machine.conf
+.local/share/themes/*

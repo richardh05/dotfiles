@@ -1,0 +1,134 @@
+#!/bin/bash
+
+# --- Function to display usage information ---
+usage() {
+    echo "Usage: $0"
+    echo "This script automates creating Git commits with specified historical dates."
+    echo ""
+    echo "It will prompt you for:"
+    echo "  - Date (YYYY-MM-DD)"
+    echo "  - Time (HH:MM:SS)"
+    echo "  - Timezone Offset (+/-HHMM, e.g., +0000 for UTC, -0500 for EST)"
+    echo "  - Commit Message"
+    echo ""
+    echo "Before running:"
+    echo "  1. Navigate to your project directory."
+    echo "  2. Ensure your files are in the state you want to commit."
+    echo "     (e.g., copied older versions into the directory)."
+    echo "  3. Add the files to the staging area using 'git add .'"
+    echo "     (or 'git add -A' if you want to also stage deletions)."
+    echo ""
+    echo "The script will then set GIT_AUTHOR_DATE and GIT_COMMITTER_DATE,"
+    echo "and make the commit."
+    echo ""
+    echo "To exit at any point, press Ctrl+C."
+    exit 1
+}
+
+# --- Check for usage help ---
+if [[ "$1" == "-h" || "$1" == "--help" ]]; then
+    usage
+fi
+
+# --- Check if we are inside a Git repository, if not, offer to initialize ---
+if ! git rev-parse --is-inside-work-tree &>/dev/null; then
+    echo "Not a Git repository."
+    read -rp "Do you want to initialize a new Git repository in the current directory? (y/n): " init_repo_choice
+    if [[ "$init_repo_choice" =~ ^[Yy]$ ]]; then
+        echo "Initializing Git repository..."
+        git init
+        if [ $? -ne 0 ]; then
+            echo "Error: Failed to initialize Git repository. Exiting."
+            exit 1
+        fi
+        echo "Repository initialized. Remember to configure your user.name and user.email:"
+        echo "  git config user.name \"Your Name\""
+        echo "  git config user.email \"your_email@example.com\""
+        echo ""
+    else
+        echo "Not initializing repository. Exiting."
+        exit 0
+    fi
+fi
+
+# --- Ensure there are staged changes ---
+if [ -z "$(git diff --cached --name-only)" ]; then
+    echo "No staged changes found. Please stage your files using 'git add .' or 'git add -A' first."
+    exit 1
+fi
+
+echo "--- Preparing to make a historical Git commit ---"
+echo ""
+
+# --- Prompt for Date ---
+read -rp "Enter commit date (YYYY-MM-DD, e.g., 2010-01-15): " COMMIT_DATE
+if [[ ! "$COMMIT_DATE" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ ]]; then
+    echo "Error: Invalid date format. Please use YYYY-MM-DD."
+    exit 1
+fi
+
+# --- Prompt for Time ---
+read -rp "Enter commit time (HH:MM:SS, e.g., 14:30:00): " COMMIT_TIME
+if [[ ! "$COMMIT_TIME" =~ ^[0-9]{2}:[0-9]{2}:[0-9]{2}$ ]]; then
+    echo "Error: Invalid time format. Please use HH:MM:SS."
+    exit 1
+fi
+
+# --- Prompt for Timezone Offset ---
+read -rp "Enter timezone offset (+/-HHMM, e.g., +0000 for GMT, +0100 for BST): " TZ_OFFSET
+if [[ ! "$TZ_OFFSET" =~ ^[+-][0-9]{4}$ ]]; then
+    echo "Error: Invalid timezone offset format. Please use +/-HHMM."
+    exit 1
+fi
+
+# --- Prompt for Commit Message ---
+read -rp "Enter commit message: " COMMIT_MESSAGE
+if [ -z "$COMMIT_MESSAGE" ]; then
+    echo "Error: Commit message cannot be empty."
+    exit 1
+fi
+#!/bin/bash
+
+# --- Construct the full date string ---
+FULL_DATE_STRING="$COMMIT_DATE $COMMIT_TIME $TZ_OFFSET"
+
+echo ""
+echo "--- Commit Details ---"
+echo "Date: $FULL_DATE_STRING"
+echo "Message: \"$COMMIT_MESSAGE\""
+echo "----------------------"
+echo ""
+
+read -rp "Proceed with commit? (y/n): " proceed_choice
+if [[ ! "$proceed_choice" =~ ^[Yy]$ ]]; then
+    echo "Commit cancelled."
+    exit 0
+fi
+
+# --- Set environment variables for Git dates ---
+export GIT_AUTHOR_DATE="$FULL_DATE_STRING"
+export GIT_COMMITTER_DATE="$FULL_DATE_STRING"
+
+echo "Making commit..."
+git commit -m "$COMMIT_MESSAGE"
+
+# --- Check if the commit was successful ---
+if [ $? -eq 0 ]; then
+    echo "Commit successful!"
+    # --- Unset the variables to avoid affecting future commits ---
+    unset GIT_AUTHOR_DATE
+    unset GIT_COMMITTER_DATE
+else
+    echo "Error: Git commit failed."
+    echo "Ensure your Git user.name and user.email are configured globally or for this repository."
+    echo "  git config --global user.name \"Your Name\""
+    echo "  git config --global user.email \"your_email@example.com\""
+fi
+
+echo ""
+echo "Next steps:"
+echo "1. Modify your files to reflect the next historical state."
+echo "2. Run 'git add .' to stage changes."
+echo "3. Run this script again."
+
+exit 0

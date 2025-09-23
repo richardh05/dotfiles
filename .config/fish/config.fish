@@ -18,7 +18,7 @@ abbr newsboat "newsboat -u ~/Documents/urls"
 abbr i3conf "nvim ~/.config/i3/config"
 abbr kittyconf "nvim .config/kitty/kitty.conf"
 abbr fishconf "nvim .config/fish/config.fish"
-set -gx PATH "$HOME/Scripts:$HOME/.local/share/JetBrains/Toolbox/scripts:$HOME/.local/share/dotnet:$HOME/.local/bin:$PATH"
+set -gx PATH "$HOME/Scripts:$HOME/.local/share/JetBrains/Toolbox/scripts:$HOME/.local/share/dotnet:$HOME/.local/bin:$PATH:/opt/dotnet/cli/.dotnet/tools"
 
 if test -f ~/.profile
     # Use 'declare -p' to get a scriptable output of variables from a Bash subshell.
