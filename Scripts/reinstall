@@ -1,5 +1,5 @@
 #!/usr/bin/bash
-essentials="base base-devel efibootmgr fastfetch fish git gnome-keyring grub keepassxc kitty ly networkmanager pipewire-alsa pipewire-pulse sof-firmware stow syncthing"
+essentials="base base-devel efibootmgr fastfetch fish git gnome-keyring grub keepassxc kitty ly mpv mpv-uosc networkmanager pipewire-alsa pipewire-pulse sof-firmware stow syncthing"
 laptop="brightnessctl linux-firmware-intel linux-firmware-whence intel-ucode"
 
 declare -A kernels=(
@@ -9,7 +9,7 @@ declare -A kernels=(
 )
 
 declare -A window_managers=(
-	["Hyprland"]="hyprland hyprlock hypridle hyprpaper hyprpolkitagent hyprshot waybar wl-clipboard rofi-wayland swaync xdg-desktop-portal-hyprland wev network-manager-applet"
+	["Hyprland"]="hyprland hyprlock hypridle hyprpaper hyprpolkitagent hyprshot waybar wl-clipboard rofi-wayland swaync xdg-desktop-portal-hyprland wev network-manager-applet qt5-wayland"
 	["i3"]="i3wm i3blocks i3lock autotiling xsel xss-lock nitrogen flameshot autotiling picom dunst rofi-wayland network-manager-applet",
 )
 
@@ -193,6 +193,9 @@ main() {
     # setup gnupg with XDG spec
     mkdir ~/.config/gnupg
     chmod 700 ~/.config/gnupg
+
+		mkdir -p ~/.config/mpv/scripts
+		ln -s /usr/share/mpv/scripts/uosc ~/.config/mpv/scripts/uosc
 
     echo "Done! Make sure you:"
     echo "1. Set up shared folders with syncthing at http://localhost:8384/"

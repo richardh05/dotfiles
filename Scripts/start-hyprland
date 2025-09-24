@@ -1,0 +1,41 @@
+#!/bin/bash
+
+# === Required environment ===
+source ~/.profile
+export XDG_SESSION_TYPE=wayland
+export XDG_CURRENT_DESKTOP=Hyprland
+export XDG_SESSION_DESKTOP=Hyprland
+export XDG_RUNTIME_DIR="/run/user/$(id -u)"
+
+export QT_QPA_PLATFORM=wayland
+export GDK_BACKEND=wayland
+export SDL_VIDEODRIVER=wayland
+export _JAVA_AWT_WM_NONREPARENTING=1
+
+# === Start Hyprland and get display variable ===
+# Note: The Hyprland process itself will set the WAYLAND_DISPLAY variable.
+Hyprland &
+
+# Wait for Hyprland to start and set the WAYLAND_DISPLAY variable
+while [[ -z "$WAYLAND_DISPLAY" ]]; do
+    sleep 0.1
+    export WAYLAND_DISPLAY=$(hyprctl getoption env WAYLAND_DISPLAY | cut -d ' ' -f 2)
+done
+
+# === Ensure user systemd session is running ===
+if ! systemctl --user is-active --quiet dbus-broker.service; then
+    systemctl --user start dbus-broker.service
+fi
+
+# === Import environment to systemd user units ===
+systemctl --user import-environment XDG_SESSION_TYPE XDG_CURRENT_DESKTOP \
+XDG_SESSION_DESKTOP XDG_RUNTIME_DIR WAYLAND_DISPLAY QT_QPA_PLATFORM GDK_BACKEND SDL_VIDEODRIVER \
+_JAVA_AWT_WM_NONREPARENTING
+
+# === Start required portal and polkit services ===
+for svc in hyprpolkitagent xdg-desktop-portal-hyprland xdg-document-portal; do
+    systemctl --user start "$svc" 2>/dev/null
+done
+
+wait
+
