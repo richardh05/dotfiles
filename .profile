@@ -1,3 +1,6 @@
+#wayland
+export QT_QPA_PLATFORM="wayland;xcb"
+
 #theme
 export QT_QPA_PLATFORMTHEME=qt6ct
 

@@ -1,0 +1,72 @@
+#!/bin/sh
+
+# !!! NONE OF THIS WORKS YET !!!
+
+# Check script is used as sudo
+if [ "$(id -u)" -ne 0 ]; then
+    echo "This script must be run as root. Please run with sudo."
+    exit 1
+fi
+
+# 1. Install UFW (if needed)
+pacman -S ufw
+
+# 2. Set Strict Default Policies
+ufw default deny incoming
+ufw default deny outgoing
+ufw default deny routed
+
+# 3. Allow SSH (if needed, crucial if connecting remotely)
+ufw allow ssh 
+# Or specific port: ufw allow 2222/tcp
+
+# 4. Except apps
+allow_interface_ports() {
+    local interface="$1"
+    echo "Configuring UFW rules for interface: $interface"
+
+    ufw allow out on "$interface" to any port 443 proto tcp comment "Allow OpenVPN, Discord and Signal TCP 443 on $interface"
+    
+	# OpenVPN/ProtonVPN/University VPN (initial connection)
+    ufw allow out on "$interface" to any port 1194 proto udp comment "Allow OpenVPN UDP on $interface"
+    ufw allow out on "$interface" to any port 80 proto tcp comment "Allow OpenVPN TCP 80 on $interface"
+    ufw allow out on "$interface" to any port 4569 proto udp comment "Allow ProtonVPN custom UDP 4569 on $interface"
+    ufw allow out on "$interface" to any port 51820 proto udp comment "Allow ProtonVPN custom UDP 51820 on $interface"
+    ufw allow out on "$interface" to any port 5060 proto udp comment "Allow ProtonVPN custom UDP 5060 on $interface"
+    ufw allow out on "$interface" to any port 53 proto udp comment "Allow DNS on $interface"
+    ufw allow out on "$interface" to any port 53 proto tcp comment "Allow DNS on $interface"
+
+    # Discord
+    ufw allow out on "$interface" to any port 50000:65535 proto udp comment "Allow Discord voice/video/screenshare (UDP range) on $interface"
+	# Note: Discord may also use UDP ports 20000-20099, but the 50000-65535 range is usually sufficient.
+	# If you experience issues, consider adding:
+	# ufw allow out on enp0s31f6 to any port 20000:20099 proto udp comment 'Discord additional UDP voice'
+	# ufw allow out on wlp61s0 to any port 20000:20099 proto udp comment 'Discord additional UDP voice on Wireless'
+
+    # Signal
+    ufw allow out on "$interface" to any port 3478 proto udp comment "Allow Signal STUN/TURN (UDP) on $interface"
+    ufw allow out on "$interface" to any port 3478 proto tcp comment "Allow Signal STUN/TURN (TCP) on $interface"
+    ufw allow out on "$interface" to any port 5349 proto tcp comment "Allow Signal STUN/TURN fallback (TCP) on $interface"
+    ufw allow out on "$interface" to any port 1024:65535 proto udp comment "Allow Signal WebRTC media (UDP range) on $interface"
+}
+ufw allow syncthing
+ufw allow syncthing-gui
+ufw allow qBittorrent
+
+# Call the function for each interface
+allow_interface_ports enp0s31f6
+allow_interface_ports wlp61s0
+# allow_interface_ports wwp0s20f0u6
+
+# 5. Edit /etc/ufw/before.rules (these remain generic for tun0/wg0)
+# (Follow previous instructions for adding tun0 and potentially wg0 rules)
+
+# 6. Edit /etc/ufw/sysctl.conf (these remain generic)
+# (Follow previous instructions for uncommenting forwarding)
+
+# 7. Apply sysctl Changes
+sysctl -p /etc/ufw/sysctl.conf
+
+# 8. Enable/Reload UFW
+ufw disable
+ufw enable

@@ -25,13 +25,8 @@ usage() {
     exit 1
 }
 
-# --- Check for usage help ---
-if [[ "$1" == "-h" || "$1" == "--help" ]]; then
-    usage
-fi
-
-# --- Check if we are inside a Git repository, if not, offer to initialize ---
-if ! git rev-parse --is-inside-work-tree &>/dev/null; then
+# --- Function to create an empty repo or exit ---
+no_repo() {
     echo "Not a Git repository."
     read -rp "Do you want to initialize a new Git repository in the current directory? (y/n): " init_repo_choice
     if [[ "$init_repo_choice" =~ ^[Yy]$ ]]; then
@@ -49,6 +44,16 @@ if ! git rev-parse --is-inside-work-tree &>/dev/null; then
         echo "Not initializing repository. Exiting."
         exit 0
     fi
+}
+
+# --- Check for usage help ---
+if [[ "$1" == "-h" || "$1" == "--help" ]]; then
+    usage
+fi
+
+# --- Check if we are inside a Git repository, if not, offer to initialize ---
+if ! git rev-parse --is-inside-work-tree &>/dev/null; then
+    no_repo
 fi
 
 # --- Ensure there are staged changes ---
@@ -74,20 +79,15 @@ if [[ ! "$COMMIT_TIME" =~ ^[0-9]{2}:[0-9]{2}:[0-9]{2}$ ]]; then
     exit 1
 fi
 
-# --- Prompt for Timezone Offset ---
-read -rp "Enter timezone offset (+/-HHMM, e.g., +0000 for GMT, +0100 for BST): " TZ_OFFSET
-if [[ ! "$TZ_OFFSET" =~ ^[+-][0-9]{4}$ ]]; then
-    echo "Error: Invalid timezone offset format. Please use +/-HHMM."
-    exit 1
-fi
-
 # --- Prompt for Commit Message ---
 read -rp "Enter commit message: " COMMIT_MESSAGE
 if [ -z "$COMMIT_MESSAGE" ]; then
     echo "Error: Commit message cannot be empty."
     exit 1
 fi
-#!/bin/bash
+
+# --- Calculate timezone offset ---
+TZ_OFFSET=${TZ="Europe/London" date -d $COMMIT_DATE +"%z"}
 
 # --- Construct the full date string ---
 FULL_DATE_STRING="$COMMIT_DATE $COMMIT_TIME $TZ_OFFSET"
@@ -106,7 +106,8 @@ if [[ ! "$proceed_choice" =~ ^[Yy]$ ]]; then
 fi
 
 # --- Set environment variables for Git dates ---
-export GIT_AUTHOR_DATE="$FULL_DATE_STRING"
+export GIT_AUTHOR_DATE="$FULL_DATE_STRING"#!/bin/bash
+
 export GIT_COMMITTER_DATE="$FULL_DATE_STRING"
 
 echo "Making commit..."

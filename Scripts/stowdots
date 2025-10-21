@@ -2,6 +2,7 @@
 REPO='/home/richard/Programming/Dotfiles/'
 stow -d $REPO -t ~/ .
 
+# machine-specifc settings
 HOSTNAME=$(cat /etc/hostname)
 case "$HOSTNAME" in
   "rht480s")
@@ -14,4 +15,10 @@ case "$HOSTNAME" in
     echo "Unknown host: $HOSTNAME" >&2
     ;;
 esac
+
+# sddm settings - copy from dotfiles to etc
+if ! diff -q ~/Programming/Dotfiles/.config/sddm/sddm.conf /etc/sddm.conf > /dev/null; then
+  echo "Your SDDM dotfile and system file are out of sync!"
+fi
+
 cd $REPO
