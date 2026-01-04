@@ -1,0 +1,120 @@
+#!/usr/bin/env python3
+from openpyxl import load_workbook
+from re import IGNORECASE, escape
+from datetime import datetime
+from pathlib import Path
+import re
+from pandas import DataFrame, Series, read_csv, read_excel
+
+abbreviations = #redacted
+
+aliases = {
+    # redacted
+}
+
+def extract_pos(row:Series):
+        location = row["Dump"][-1]           # take last element
+        extras_string = row["Dump"][0]           # take first element
+        dump = row["Dump"][1:-1]                   # remove them
+        extras = extras_string.split(" ")
+        card_no = extras[0]
+        #real_date = datetime.strptime(extras[1], "%d%b%y")
+        real_date_str = extras[1]
+        real_date = datetime.strptime(real_date_str, "%d%b%y")
+        card_type = extras[2]
+        business = "".join(dump).strip()
+
+        return Series({"Dump": dump, "Location": location, "CardNo": card_no, "RealDate": real_date, "CardType": card_type, "Business or Person": business})
+
+    
+def extract_dpc(row:Series):
+        person = row["Dump"][0]
+        reference = row["Dump"][1]
+        dump = row["Dump"][2:]
+        location = ""
+        if any("VIA MOBILE" in s for s in dump):
+          location = "Mobile"
+          dump = [s for s in dump if "VIA MOBILE" not in s]
+
+        date = ""
+        for s in dump:
+            if "FP " in s:
+                match = re.search(r"FP (.*?)10\s*$", s)
+                if match:
+                    date_str = match.group(1).strip()
+                    date = datetime.strptime(date_str, "%d/%m/%y")
+                dump = [x for x in dump if "FP " not in x]
+                break  # stop after finding the first FP
+
+        return Series({"Dump": dump, "Business or Person": person, "Comment": reference, "Location": location, "RealDate": date})
+
+def format_locations(row:Series):
+    location = str(row.get("Location", "")).strip()
+    if not location:
+        return row
+
+    location_list = location.split(" ")
+
+    # Check if last token looks like a country code (e.g., "GB")
+    if len(location_list) >= 2 and len(location_list[-1]) == 2:
+        row["Country"] = location_list[-1]
+        location_list.pop(-1)  # remove last element, but don't reassign
+
+    row["Location"] = " ".join(location_list).strip()
+    return row
+
+
+def format_strings(row:Series):
+    for a in abbreviations:
+        #pattern = rf".*\b({re.escape(a)})\b.*"
+        pattern = rf".*({re.escape(a)}).*"
+        # business = re.sub(pattern, a, business, flags=IGNORECASE)
+        row = row.str.replace(pattern, a, regex=True, flags=IGNORECASE)
+  
+    # Build (pattern, alias) pairs
+    patterns = []
+    for alias, reps in aliases.items():
+        for rep in reps:
+            # (?i) = case-insensitive, \b = word boundary
+            # (?i) = case-insensitive, ^$ = match entire string
+            pat = rf"(?i)^{escape(rep)}$"
+            patterns.append((pat, alias))
+
+    # Prefer longer patterns first to avoid partial matching
+    patterns.sort(key=lambda p: -len(p[0]))
+
+    # Build mapping dict for pandas.replace
+    mapping = {pat: alias for pat, alias in patterns}
+
+    # pandas will apply all replacements in a vectorized manner
+    return row.replace(mapping, regex=True)
+
+
+csv_path = Path("~/Downloads/2024.csv")
+df = read_csv(csv_path, parse_dates=["Date"], dayfirst=True)
+df = df.rename(columns={"Description": "Dump"})
+df["Dump"] = df["Dump"].apply(lambda x: x.split(", "))
+df = df.reindex(columns=["Date", "RealDate", "Type", "Business or Person", "Location", "Country", "Value", "Balance", "Comment", "Account Name", "Account Number", "CardNo", "CardType", "Dump"])
+
+# Add "Refund" to df$Comment if present, and remove from df$Dump
+df["Comment"] = df["Dump"].apply(
+    lambda x: "Refund" if len(x) > 0 and str(x[-1]).upper() == "REFUND" else ""
+)
+df["Dump"] = df["Dump"].apply(
+    lambda x: x[:-1] if len(x) > 0 and str(x[-1]).upper() == "REFUND" else x
+)       
+
+pos_mask = df["Type"] == "POS"
+df.loc[pos_mask, ["Dump", "Location", "CardNo", "RealDate", "CardType", "Business or Person"]] = (
+    df.loc[pos_mask].apply(extract_pos, axis=1)
+)
+
+dpc_mask = df["Type"] == "DPC"
+df.loc[dpc_mask, ["Dump", "Business or Person", "Comment", "Location", "RealDate"]] = (
+    df.loc[dpc_mask].apply(extract_dpc, axis=1)
+)
+
+df = df.apply(format_locations, axis=1)
+df["Business or Person"] = format_strings(df["Business or Person"])
+
+df.to_csv('data.csv', encoding='utf-8', index=False)

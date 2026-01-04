@@ -3,3 +3,4 @@
 .vscode
 machine.conf
 .local/share/themes/*
+*.csv
