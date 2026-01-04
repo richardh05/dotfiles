@@ -20,6 +20,6 @@ configuration {
     me-accept-entry: [ MousePrimary, MouseSecondary, MouseDPrimary ];
 }
 
-@theme "/home/richard/.config/rofi/kanagawa.rasi"
+@theme "/home/richard/.config/rofi/rose pine.rasi"
 
 // rofi.command: fzf --query %s --query-files %F --multi --print0 | rofi -dmenu -p %s

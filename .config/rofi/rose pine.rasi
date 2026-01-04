@@ -1,10 +1,10 @@
 //GLOBAL TWEAKS & VARIABLES
 * {
-    bg-col: #282828;
-    special: #689d68;
-    fg-col: #bdae93;
-    grey: #a89984;
-    black: #191919;
+    bg-col:  #403d52;
+    special: #eb6f92;
+    fg-col: #e0def4;
+    grey: #e0def4;
+    black: #191724;
 
     width: 600;
     font: "Noto Serif Bold 16";

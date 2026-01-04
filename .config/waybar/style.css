@@ -1,5 +1,6 @@
-@define-color fg #ebdbb2;
-@define-color bg #282828;
+@define-color fg #e0def4;
+@define-color bg #191724;
+@define-color urgent #eb6f92;
 
 * {
     border: none;
@@ -16,7 +17,6 @@
 
 window#waybar, tooltip {
     background: #1a1a22;
-    border: 2px solid #1F1F28;
 }
 
 .module {
@@ -55,5 +55,5 @@ window#waybar, tooltip {
 #battery.warning,
 #battery.critical,
 #battery.urgent {
-    color: #fb4934;
+    color: @urgent;
 }
