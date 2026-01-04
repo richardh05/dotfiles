@@ -1,0 +1,149 @@
+#!/bin/bash
+
+usage() {
+  echo "Usage: $0 /path/to/folder"
+  echo "-m to use file modification dates for undated files."
+  echo "-c to convert JPGs to JXL."
+  echo "-p to compress PNGs to JXL (lossy)."
+  exit 1
+}
+
+ensure_dir_exists() {
+  if [ ! -d "$1" ]; then
+    echo "Error: Directory $1 does not exist."
+    exit 1
+  fi
+}
+
+add_missing_dates_from_title() {
+  local dir="$1"
+  echo "Performing high-efficiency metadata scan..."
+
+  exiftool -r -m -overwrite_original \
+    -ext jpg -ext jpeg -ext png \
+    -if 'not $DateTimeOriginal' \
+    `# 1. Google Pixel (PXL_YYYYMMDD_...)` \
+    '-DateTimeOriginal<${Filename;s/^PXL_(\d{8})_(\d{6})\d{3}.*/$1$2/}' \
+    `# 2. Samsung Screenshots (Screenshot_YYYYMMDD-...)` \
+    '-DateTimeOriginal<${Filename;s/^Screenshot_(\d{8})-(\d{6}).*/$1$2/}' \
+    `# 3. Android/Instagram (IMG_YYYYMMDD_HHMMSS_###)` \
+    '-DateTimeOriginal<${Filename;s/^IMG_(\d{8})_(\d{6})_(\d{3}).*/$1$2/}' \
+    `# 4. STRICT Samsung/Generic Camera (Starts with 20 or 19, e.g., 20231021_191106.jpg)` \
+    '-DateTimeOriginal<${Filename;s/^(20\d{6}|19\d{6})_(\d{6}).*/$1$2/}' \
+    `# 5. Minecraft (YYYY-MM-DD_...)` \
+    '-DateTimeOriginal<${Filename;s/^(\d{4})-(\d{2})-(\d{2})_(\d{2})\.(\d{2})\.(\d{2}).*/$1:$2:$3 $4:$5:$6/}' \
+    `# 6. Flameshot (YYYY-MM-DD_HH-MM)` \
+    '-DateTimeOriginal<${Filename;s/^(\d{4})-(\d{2})-(\d{2})_(\d{2})-(\d{2}).*/$1:$2:$3 $4:$5:00/}' \
+    `# 7. Grim (YYYYMMDD_HHhMMmSSs_grim.png)` \
+    '-DateTimeOriginal<${Filename;s/^(\d{4})(\d{2})(\d{2})_(\d{2})h(\d{2})m(\d{2})s.*/$1:$2:$3 $4:$5:$6/}' \
+    `# 8. Hyprshot (YYYY-MM-DD-HHMMSS_hyprshot.png)` \
+    '-DateTimeOriginal<${Filename;s/^(\d{4})-(\d{2})-(\d{2})-(\d{2})(\d{2})(\d{2}).*/$1:$2:$3 $4:$5:$6/}' \
+    "$dir"
+}
+
+add_missing_dates_from_mtime() {
+  local dir="$1"
+  echo "Processing JPGs in: $dir"
+
+  # Use File Modification Date for any remaining files
+  echo "Applying file modification date to remaining files missing EXIF dates..."
+  exiftool -r -if 'not $DateTimeOriginal' \
+    "-DateTimeOriginal<FileModifyDate" \
+    -overwrite_original \
+    -ext jpg -ext jpeg -ext png \
+    "$dir"
+}
+
+compress_jpg_to_jxl() {
+  local file="$1"
+  local name="${file%.*}"
+
+  # 1. Check if the file contains an embedded video (common in Apple Live Photos)
+  # This checks for the "MicroVideo" or "VideoOffset" tags often used in embedded JPEGs.
+  local has_embedded_video
+  has_embedded_video=$(exiftool -s3 -MicroVideo -VideoOffset "$file")
+
+  if [ -n "$has_embedded_video" ]; then
+    echo "Skipping $file: Contains an embedded video."
+    return 1
+  fi
+
+  # 2. Perform Lossless JPEG Transcoding
+  # -j 1 (or --jpeg_transcode=1) is the bit-for-bit lossless mode
+  echo "Converting $file to JXL (Lossless)..."
+  if cjxl "$file" "${name}.jxl" -j 1 --effort=9; then
+      
+    # 3. Copy all original metadata
+    # Even though -j 1 preserves many things, exiftool ensures
+    # all XMP, IPTC, and MakerNotes are synced for Immich.
+    exiftool -tagsFromFile "$file" -all:all -overwrite_original "${name}.jxl"
+    
+    echo "Success: ${name}.jxl created."
+    # Optional: rm "$file" 
+  else
+    echo "Error: cjxl failed on $file"
+    return 1
+  fi
+}
+
+batch_compress_jpg_to_jxl() {
+  local dir="$1"
+  echo "Starting batch compression of JPGs to JXL in: $dir"
+
+  find "$dir" -type f \( -iname "*.jpg" -o -iname "*.jpeg" \) | while read -r file; do
+    compress_jpg_to_jxl "$file"
+  done
+}
+
+compress_png_to_jxl() {
+  local file="$1"
+  local name="${file%.*}"
+
+  echo "Converting $file to JXL..."
+
+  # magick command breakdown:
+  if magick "$file" -define jxl:effort=9 "${name}.jxl"; then
+    
+    # Copy metadata from the PNG to the JXL
+    exiftool -tagsFromFile "$file" -all:all -overwrite_original "${name}.jxl"
+    
+    echo "Success: ${name}.jxl created."
+    # rm "$file" # Uncomment to delete original after conversion
+  else
+    echo "Error: ImageMagick failed to convert $file"
+    return 1
+  fi
+}
+
+batch_compress_png_to_jxl() {
+  local dir="$1"
+  echo "Starting batch compression of PNGs to JXL in: $dir"
+
+  find "$dir" -type f -iname "*.png" | while read -r file; do
+    compress_png_to_jxl "$file"
+  done
+}
+
+
+# == START OF SCRIPT ==
+
+if [ -z "$1" ]; then
+  usage
+fi
+
+TARGET_DIR="$1"
+ensure_dir_exists "$TARGET_DIR"
+add_missing_dates_from_title "$TARGET_DIR"
+
+if [[ $* == *-m* ]]; then
+  add_missing_dates_from_mtime "$TARGET_DIR"
+fi
+
+# we can assume at this point all files have metadata set
+if [[ $* == *-c* ]]; then
+  batch_compress_jpg_to_jxl "$TARGET_DIR"
+fi 
+
+if [[ $* == *-p* ]]; then
+  batch_compress_png_to_jxl "$TARGET_DIR"
+fi 

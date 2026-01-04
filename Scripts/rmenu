@@ -20,6 +20,7 @@ find() {
         dmenu) filepath=$(fd . ~ | sed "s|$home||g" |
         dmenu -i -l 20 -fn 'Jetbrains Mono:bold:pixelsize=16' -nb $BG -nf $LIGHTGREY -sb $LIGHTGREY -sf $BG);;
     esac
+    
 
     if [ -z "$filepath" ]; then #prevents opening $home on its own
         exit 0
@@ -44,7 +45,7 @@ power() {
             󰐥\ Shutdown) exec systemctl poweroff;;
             󰜉\ Restart) exec systemctl reboot;;
             # Logout) kill -HUP $XDG_SESSION_PID;;
-            󰍃\ Logout) i3-msg exit; hyprctl dispatch exit;;
+            󰍃\ Logout) i3-msg exit; uwsm stop;;
             󰌾\ Lock) exec systemctl suspend;;
             󰍺\ Auto-configure\ monitors) exec fix-monitors;;
             #Lock) exec systemctl --user start lock.target;;

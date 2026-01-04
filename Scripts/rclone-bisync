@@ -1,0 +1,5 @@
+#! /bin/sh
+
+#rclone config
+#rclone bisync /home/richard/Documents MEGA:Documents --resync
+rclone bisync /home/richard/Documents MEGA:Documents --conflict-resolve newer --compare size,modtime,checksum --verbose

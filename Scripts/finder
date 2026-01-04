@@ -1,0 +1,6 @@
+#!/bin/sh
+# A simple fzf picker that opens selected files.
+
+file="$(fd -t f | fzf --height=80% --border)"
+
+[ -n "$file" ] && xdg-open "$file"

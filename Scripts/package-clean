@@ -1,0 +1,8 @@
+#!/bin/bash
+paccache -r -k1
+yay -Sc --keep 1
+
+docker builder prune -a #build cache
+docker image prune #unused images
+
+sudo journalctl --vacuum-time=60d
