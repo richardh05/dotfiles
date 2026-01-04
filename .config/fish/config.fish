@@ -39,4 +39,4 @@ if test -f ~/.profile
     end
 end
 #wants to be at the end
-zoxide init fish | source
+source ~/.config/fish/functions/zoxide.fish
