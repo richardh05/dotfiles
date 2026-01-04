@@ -38,10 +38,10 @@ bindsym Mod4+o exec obsidian
 bindsym Control+Shift+Escape exec kitty htop
 bindsym Print exec flameshot full -c -p ~/Pictures/Screenshots/
 bindsym Shift+Print exec flameshot gui
-bindsym Mod4+Escape exec rmenu-power
-bindsym Mod4+d exec rmenu-apps
+bindsym Mod4+Escape exec rmenu power
+bindsym Mod4+d exec rmenu apps
 bindsym Mod4+Shift+d exec rofi -dmenu
-bindsym Mod4+f exec rmenu-finder
+bindsym Mod4+f exec rmenu finder
 bindsym Mod4+p exec keepassxc
 
 #------------#
