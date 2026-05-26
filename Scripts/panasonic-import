@@ -1,0 +1,64 @@
+#!/bin/bash
+
+# --- SETTINGS ---
+OUT_DIR="/home/richard/Videos"
+CAMERA_MAKE="Panasonic"
+CAMERA_MODEL="SDR-S7"
+
+shopt -s globstar
+mkdir -p "$OUT_DIR"
+
+for moi in **/*.MOI; do
+    dir=$(dirname "$moi")
+    base=$(basename "$moi" .MOI)
+    mod="$dir/${base}.MOD"
+
+    if [ ! -f "$mod" ]; then continue; fi
+
+    echo "Processing $base..."
+
+    # 1. Extract the Timestamp and strip milliseconds
+    # We use cut to take everything before the decimal point
+    RAW_TIME=$(exiftool -s3 -DateTimeOriginal "$moi" | cut -d'.' -f1)
+    
+    # 2. Format for Filename: YYYY-MM-DDTHH.MM.SS
+    # Note: Using dots or dashes for time instead of colons for filesystem safety
+    ISO_FILENAME=$(echo "$RAW_TIME" | sed 's/:/-/1; s/:/-/1; s/ /T/; s/:/_/g')
+    
+    mkv="$OUT_DIR/${ISO_FILENAME}.mkv"
+
+    # 3. Handle Duplicate Timestamps (Safety Check)
+    # If the file exists, append a suffix so we don't overwrite
+    if [ -f "$mkv" ]; then
+        count=1
+        while [ -f "$OUT_DIR/${ISO_FILENAME}_${count}.mkv" ]; do
+            ((count++))
+        done
+        mkv="$OUT_DIR/${ISO_FILENAME}_${count}.mkv"
+    fi
+
+    # 4. Aspect Ratio Check
+    if exiftool -AspectRatio "$moi" | grep -q "16:9"; then
+        ASPECT="16/9"
+    else
+        ASPECT="4/3"
+    fi
+
+    # 5. FFmpeg Remux (Internal metadata can keep the colons)
+    ffmpeg -loglevel error -i "$mod" -c copy -aspect "$ASPECT" \
+           -metadata creation_time="${RAW_TIME// /T}Z" \
+           -metadata manufacturer="$CAMERA_MAKE" \
+           -metadata model="$CAMERA_MODEL" \
+           "$mkv"
+
+    # 6. ExifTool Filesystem Touch
+    exiftool -quiet -overwrite_original \
+        "-FileModifyDate=$RAW_TIME" \
+        -Make="$CAMERA_MAKE" \
+        -Model="$CAMERA_MODEL" \
+        "$mkv"
+
+    echo "Finished: $(basename "$mkv")"
+done
+
+echo "Done! Files moved to $OUT_DIR"
