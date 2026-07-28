@@ -1,0 +1,64 @@
+#!/bin/bash
+
+# Configuration: What should the output subfolder be named?
+OUT_NAME="diagrams-out"
+
+echo "Starting recursive diagram rendering..."
+
+# 1. Prepare the Mermaid Config (done once at the start)
+cat <<EOF > /tmp/mermaid_typst_config.json
+{
+  "flowchart": { "htmlLabels": false },
+  "sequence": { "htmlLabels": false },
+  "gannt": { "htmlLabels": false },
+  "theme": "neutral"
+}
+EOF
+
+# Use 'find' to locate .mmd, .puml, and .plantuml files recursively
+# We exclude any files already inside a "diagrams-out" folder to avoid loops
+find . -type f \( -name "*.mmd" -o -name "*.puml" -o -name "*.plantuml" \) ! -path "*/$OUT_NAME/*" | while read -r f; do
+    
+    # Calculate directories based on the current file
+    FILE_DIR=$(dirname "$f")
+    FILENAME=$(basename -- "$f")
+    FILE_EXT="${FILENAME##*.}"
+    BASENAME="${FILENAME%.*}"
+    TARGET_DIR="$FILE_DIR/$OUT_NAME"
+
+    # Ensure the local output directory exists
+    mkdir -p "$TARGET_DIR"
+
+    # --- Process Mermaid (.mmd) ---
+    if [[ "$FILE_EXT" == "mmd" ]]; then
+        if command -v mmdc &> /dev/null; then
+            echo "Processing Mermaid: $f -> $TARGET_DIR/$BASENAME.svg"
+            mmdc -i "$f" \
+                 -o "$TARGET_DIR/$BASENAME.svg" \
+                 -c /tmp/mermaid_typst_config.json \
+                 -b transparent
+        else
+            echo "Warning: mmdc not found. Skipping $f"
+        fi
+
+    # --- Process PlantUML (.puml, .plantuml) ---
+    else
+        if command -v plantuml &> /dev/null; then
+            echo "Processing PlantUML: $f -> $TARGET_DIR/$BASENAME.svg"
+            
+            # PlantUML usually outputs to the same dir as the source
+            plantuml -tsvg "$f"
+            
+            # Move it to the local diagrams-out folder
+            if [ -f "$FILE_DIR/$BASENAME.svg" ]; then
+                mv "$FILE_DIR/$BASENAME.svg" "$TARGET_DIR/"
+            fi
+        else
+            echo "Warning: plantuml not found. Skipping $f"
+        fi
+    fi
+done
+
+# Clean up
+rm /tmp/mermaid_typst_config.json
+echo "Done! Diagrams are organized in local '$OUT_NAME' folders."

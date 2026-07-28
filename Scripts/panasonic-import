@@ -5,13 +5,37 @@ OUT_DIR="/home/richard/Videos"
 CAMERA_MAKE="Panasonic"
 CAMERA_MODEL="SDR-S7"
 
+# 1. Use argument if provided, otherwise auto-detect common SD card mount points
+IN_DIR="${1:-}"
+if [ -z "$IN_DIR" ]; then
+    for sd_path in /run/media/"$USER"/*/SD_VIDEO /media/"$USER"/*/SD_VIDEO \
+                   /mnt/*/SD_VIDEO /run/media/"$USER"/*/sd_video \
+                   /media/"$USER"/*/sd_video /mnt/*/sd_video; do
+        if [ -d "$sd_path" ]; then
+            IN_DIR="$sd_path"
+            echo "Auto-detected SD card at: $IN_DIR"
+            break
+        fi
+    done
+fi
+
+# Fallback to current directory if not found
+IN_DIR="${IN_DIR:-.}"
+
 shopt -s globstar
+shopt -s nullglob
+shopt -s nocaseglob
+
 mkdir -p "$OUT_DIR"
 
-for moi in **/*.MOI; do
+for moi in "$IN_DIR"/**/*.MOI; do
     dir=$(dirname "$moi")
-    base=$(basename "$moi" .MOI)
-    mod="$dir/${base}.MOD"
+    filename=$(basename "$moi")
+    base="${filename%.*}"
+    
+    # Find the corresponding MOD file (case-insensitive)
+    mod_files=("$dir/$base".MOD)
+    mod="${mod_files[0]:-}"
 
     if [ ! -f "$mod" ]; then continue; fi
 
@@ -21,6 +45,11 @@ for moi in **/*.MOI; do
     # We use cut to take everything before the decimal point
     RAW_TIME=$(exiftool -s3 -DateTimeOriginal "$moi" | cut -d'.' -f1)
     
+    if [ -z "$RAW_TIME" ]; then
+        echo "Warning: Could not extract DateTimeOriginal from $moi. Skipping..."
+        continue
+    fi
+
     # 2. Format for Filename: YYYY-MM-DDTHH.MM.SS
     # Note: Using dots or dashes for time instead of colons for filesystem safety
     ISO_FILENAME=$(echo "$RAW_TIME" | sed 's/:/-/1; s/:/-/1; s/ /T/; s/:/_/g')

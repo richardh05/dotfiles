@@ -1,0 +1,18 @@
+style:
+    footer:
+        text-color: '#191724'
+        background-color: '#31748f'
+        number-color: '#e0def4'
+    selected-row:
+        text-color: "#403d52"
+        background-color: "#e0def4"
+    result-row:
+        number-color: '#eb6f92'
+        directory-color: '#31748f'
+    header:
+        text-color: '#191724'
+        background-color: '#31748f'
+        hidden: true
+    progress-modal:
+        current-item-path-max-len: 0
+    use-old-size-bar: falsetotal
