@@ -1,23 +1,9 @@
 #!/bin/sh
-REPO='/home/richard/Programming/Dotfiles/'
+REPO='/home/richard/Projects/Dotfiles/'
 stow -d $REPO -t ~/ .
 
-# machine-specifc settings
-HOSTNAME=$(cat /etc/hostname)
-case "$HOSTNAME" in
-  "rht480s")
-    echo 'source = ~/.config/hypr/hyprland-laptop.conf' > ~/.config/hypr/machine.conf
-    ;;
-  "rhITX")
-    echo 'source = ~/.config/hypr/hyprland-desktop.conf' > ~/.config/hypr/machine.conf
-    ;;
-  *)
-    echo "Unknown host: $HOSTNAME" >&2
-    ;;
-esac
-
 # sddm settings - copy from dotfiles to etc
-if ! diff -q ~/Programming/Dotfiles/.config/sddm/sddm.conf /etc/sddm.conf > /dev/null; then
+if ! diff -q $REPO/.config/sddm/sddm.conf /etc/sddm.conf > /dev/null; then
   echo "Your SDDM dotfile and system file are out of sync!"
 fi
 
