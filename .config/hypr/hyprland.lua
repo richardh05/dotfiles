@@ -58,6 +58,7 @@ end)
 hl.env("XCURSOR_SIZE", 24)
 hl.env("HYPRCURSOR_SIZE", 24)
 hl.env("HYPRCURSOR_THEME", "BreezeX-RosePine-Linux")
+hl.env("QT_QPA_PLATFORMTHEME", "qt6ct")
 
 local function has_nvidia_gpu()
     -- Fast check: See if Nvidia driver proc directory exists

@@ -1,9 +1,6 @@
 #wayland
 export QT_QPA_PLATFORM="wayland;xcb"
 
-#theme
-export QT_QPA_PLATFORMTHEME=qt6ct
-
 #hyprshot
 export HYPRSHOT_DIR="/home/richard/Pictures/Screenshots"
 
@@ -39,10 +36,11 @@ export YARN_RC_FILENAME="/home/richard/.config/yarn/config"
 export NPM_CONFIG_CACHE="/home/richard/.cache/npm"
 
 #java
-export ANDROID_HOME="/opt/android/sdk"
-export ANDROID_SDK_ROOT="/opt/android/sdk"
-export ANDROID_EMULATOR_HOME="/opt/android/emulator"	
-export MAVEN_USER_HOME="/home/richard/.local/share/m2"
+#export ANDROID_HOME="/opt/android/sdk"
+#export ANDROID_SDK_ROOT="/opt/android/sdk"
+#export ANDROID_EMULATOR_HOME="/opt/android/emulator"	
+#export MAVEN_USER_HOME="/home/richard/.local/share/m2"
+export CHROME_EXECUTABLE="/usr/bin/chromium"
 
 #jupyter
 export JUPYTER_CONFIG_DIR="/home/richard/.config/jupyter"
